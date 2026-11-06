@@ -4,6 +4,8 @@ Retrieval-augmented question answering over SQuAD v1.1, built as the completion 
 summer 2025 research internship project *"Question Answering in LLMs"* (SRM University AP,
 guide: Dr. M. Krishna Siva Prasad).
 
+![QA Studio web app: both readers answer "CBS" from the retrieved Super Bowl 50 passage](docs/screenshot.png)
+
 It has two layers:
 
 **Core (the internship project, completed):**
