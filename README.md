@@ -235,7 +235,7 @@ uvicorn qa.api:app --port 8000
 
 Open <http://127.0.0.1:8000> (Swagger UI at <http://127.0.0.1:8000/docs>).
 
-The web app is plain HTML/CSS/JS served by FastAPI ([qa/web/](qa/web)): no Node, no build step.
+The web app is plain HTML/CSS/JS served by FastAPI ([qa/web/](qa/web)): no Node, no build step. Theme: forest green `#1f3d2b` and sand beige `#e8dcc4`, with Fraunces (headings) and Inter (body) from Google Fonts (falls back to system fonts offline).
 
 * **Ask** - chat-style conversation. Each answer card shows:
   * the answer, a confidence ring and runner-up answers;

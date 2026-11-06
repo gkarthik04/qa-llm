@@ -5,24 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>QA Studio</title>
   <meta name="description" content="Retrieval-augmented question answering over SQuAD and your own documents">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234f46e5'/><text x='16' y='22' font-family='Arial' font-size='16' font-weight='700' text-anchor='middle' fill='white'>Q</text></svg>">
-  <link rel="stylesheet" href="/static/styles.css?v=4">
+  <meta name="theme-color" content="#1f3d2b">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='9' fill='%231f3d2b'/><path d='M16 6c5 3 7 8 6 13-1 4-4 7-6 7s-5-3-6-7c-1-5 1-10 6-13z' fill='%23e8dcc4'/><path d='M16 10v16' stroke='%231f3d2b' stroke-width='1.6'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,650&family=Inter:wght@400;500;600;650;700&display=swap">
+  <link rel="stylesheet" href="/static/styles.css?v=5">
   <script>
     try { const t = localStorage.getItem("qa-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
   </script>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M12 2.5c4.7 2.6 7 7.3 6 12-.8 3.8-3.7 6.9-6 6.9s-5.2-3.1-6-6.9c-1-4.7 1.3-9.4 6-12z" fill="currentColor"/><path d="M12 7v14.5M12 12l3-2.5M12 16l-3-2.5" stroke="var(--sand, #e8dcc4)" stroke-width="1.3" stroke-linecap="round" fill="none"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12l15-7-5 15-3-6-7-2z" fill="currentColor"/></symbol>
+  <symbol id="i-dice" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="9" r="1.4" fill="currentColor"/><circle cx="15" cy="15" r="1.4" fill="currentColor"/><circle cx="15" cy="9" r="1.4" fill="currentColor"/><circle cx="9" cy="15" r="1.4" fill="currentColor"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4m0 0l-4.5 4.5M12 4l4.5 4.5M5 15v3a2 2 0 002 2h10a2 2 0 002-2v-3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-theme" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+</svg>
+
 <div class="app" id="app">
 
   <!-- ===== Sidebar: knowledge source + settings ===== -->
   <aside class="sidebar" id="sidebar" aria-label="Settings">
     <div class="brand">
-      <div class="logo" aria-hidden="true">Q</div>
+      <div class="logo" aria-hidden="true"><svg><use href="#i-leaf"/></svg></div>
       <div>
         <div class="brand-name">QA Studio</div>
         <div class="brand-sub">Question Answering in LLMs</div>
       </div>
-      <button class="icon-btn only-mobile" id="closeSidebar" aria-label="Close settings">✕</button>
+      <button class="icon-btn only-mobile" id="closeSidebar" aria-label="Close settings"><svg><use href="#i-close"/></svg></button>
     </div>
 
     <section class="panel">
@@ -46,7 +60,7 @@
 
       <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload PDF, TXT or MD files">
         <input type="file" id="fileInput" accept=".pdf,.txt,.md" multiple hidden>
-        <div class="dz-icon" aria-hidden="true">⇪</div>
+        <div class="dz-icon" aria-hidden="true"><svg><use href="#i-upload"/></svg></div>
         <div><strong>Drop PDF / TXT / MD</strong><br><span class="muted">or click to browse · indexed on the fly</span></div>
       </div>
       <ul class="doc-list" id="docList"></ul>
@@ -55,11 +69,11 @@
     <section class="panel">
       <h2 class="panel-title">Answering</h2>
       <div class="segmented" role="radiogroup" aria-label="Reader" data-name="reader">
-        <button role="radio" data-value="extractive" aria-checked="true">Extractive</button>
+        <button role="radio" data-value="extractive" aria-checked="false">Extractive</button>
         <button role="radio" data-value="generative" aria-checked="false">Generative</button>
-        <button role="radio" data-value="compare" aria-checked="false">Compare</button>
+        <button role="radio" data-value="compare" aria-checked="true">Compare</button>
       </div>
-      <p class="hint" id="readerHint">DistilBERT, fine-tuned by us, extracts the answer span from the passages.</p>
+      <p class="hint" id="readerHint">Both readers answer from the same evidence. Agreement is a strong confidence signal.</p>
 
       <div class="field" id="scoringField">
         <div class="field-label">Span scoring <span class="info" title="Calibrated: per-window softmax probabilities combined with the retriever's passage probability. Raw: start+end logits (classic recipe).">?</span></div>
@@ -97,7 +111,7 @@
   <!-- ===== Main ===== -->
   <main class="main">
     <header class="topbar">
-      <button class="icon-btn only-mobile" id="openSidebar" aria-label="Open settings">☰</button>
+      <button class="icon-btn only-mobile" id="openSidebar" aria-label="Open settings"><svg><use href="#i-menu"/></svg></button>
       <nav class="tabs" role="tablist">
         <button role="tab" class="tab" aria-selected="true" data-view="ask">Ask</button>
         <button role="tab" class="tab" aria-selected="false" data-view="results">Results</button>
@@ -105,7 +119,7 @@
       </nav>
       <div class="topbar-actions">
         <button class="ghost-btn" id="clearChat" title="Clear conversation">Clear</button>
-        <button class="icon-btn" id="themeToggle" aria-label="Toggle dark mode" title="Toggle theme">◐</button>
+        <button class="icon-btn" id="themeToggle" aria-label="Toggle dark mode" title="Toggle theme"><svg><use href="#i-theme"/></svg></button>
       </div>
     </header>
 
@@ -113,23 +127,32 @@
     <section class="view" id="view-ask" aria-label="Ask">
       <div class="thread" id="thread" aria-live="polite">
         <div class="empty" id="empty">
-          <h1>Ask anything about the passages</h1>
-          <p>Hybrid search finds the evidence, a cross-encoder ranks it, and two different readers answer: a span extractor and a generator. You see the evidence, the confidence, and whether the readers agree.</p>
-          <div class="chips" id="suggestions">
-            <button class="chip">Who was the Super Bowl 50 MVP?</button>
-            <button class="chip">What causes the Rhine to flow faster in some places?</button>
-            <button class="chip">Which NFL team won Super Bowl 50?</button>
-            <button class="chip">What is the main role of chloroplasts?</button>
+          <div class="hero">
+            <div class="eyebrow">Retrieval-augmented QA · SQuAD &amp; your files</div>
+            <h1>Ask a question. See the evidence, the confidence, and whether two models agree.</h1>
+            <p>Hybrid search finds the passages, a cross-encoder ranks them, then a fine-tuned span extractor and a generative model answer from the same evidence.</p>
+            <div class="flow" aria-label="Pipeline">
+              <span>BM25 + MiniLM</span><i>→</i><span>RRF fusion</span><i>→</i><span>Cross-encoder</span><i>→</i><span>DistilBERT · Flan-T5</span>
+            </div>
           </div>
-          <button class="primary-outline" id="randomBtn">🎲 Random SQuAD question (graded against gold)</button>
+          <div class="try">
+            <div class="try-title">Try one</div>
+            <div class="chips" id="suggestions">
+              <button class="chip">Which network broadcasted Super Bowl 50 in the United States?</button>
+              <button class="chip">Which NFL team won Super Bowl 50?</button>
+              <button class="chip">What is the main role of chloroplasts?</button>
+              <button class="chip">What causes the Rhine to flow faster in some places?</button>
+            </div>
+            <button class="primary-btn" id="randomBtn"><svg><use href="#i-dice"/></svg>Random SQuAD question, graded against the gold answer</button>
+          </div>
         </div>
       </div>
 
       <form class="composer" id="composer">
         <div class="composer-inner">
-          <textarea id="question" rows="1" placeholder="Ask a question…  (press / to focus)" maxlength="500" aria-label="Question"></textarea>
-          <button type="button" class="icon-btn" id="randomInline" title="Random SQuAD question" aria-label="Random SQuAD question">🎲</button>
-          <button type="submit" class="send" id="send" aria-label="Ask">➤</button>
+          <textarea id="question" rows="1" placeholder="Ask a question…" title="Press / to focus" maxlength="500" aria-label="Question"></textarea>
+          <button type="button" class="icon-btn" id="randomInline" title="Random SQuAD question" aria-label="Random SQuAD question"><svg><use href="#i-dice"/></svg></button>
+          <button type="submit" class="send" id="send" aria-label="Ask"><svg><use href="#i-send"/></svg></button>
         </div>
         <div class="composer-meta" id="composerMeta"></div>
       </form>
@@ -149,7 +172,7 @@
           <li><b>Re-rank</b><span>A cross-encoder (MS-MARCO MiniLM) reads the question and each of the top 20 passages together and reorders them. Its scores become a probability for each passage.</span></li>
           <li><b>Read</b><span><em>Extractive:</em> DistilBERT, fine-tuned by us on SQuAD, scores every start/end span. With calibrated scoring, each window's logits become probabilities and are multiplied by the passage probability, so the scores are comparable across passages. <em>Generative:</em> Flan-T5 writes the answer from the passages, and its confidence is the probability of the generated sequence.</span></li>
           <li><b>Cross-check</b><span>In Compare mode both readers answer from the same evidence. When they agree, accuracy is much higher; when they disagree, the UI flags the answer.</span></li>
-          <li><b>Your documents</b><span>Uploaded PDFs and text files are split into overlapping ~120-word passages and indexed into their own dense + BM25 index, so the same pipeline answers questions about them.</span></li>
+          <li><b>Your files</b><span>Uploaded PDFs and text files are split into overlapping ~120-word passages and indexed into their own dense + BM25 index, so the same pipeline answers questions about them.</span></li>
         </ol>
         <p class="muted">API docs: <a href="/docs">/docs</a> · Source: <code>qa/</code> · Every number on the Results tab comes from <code>python -m qa.evaluate</code> and <code>python -m qa.evaluate_advanced</code>.</p>
       </div>
@@ -170,6 +193,6 @@
   </div>
 </template>
 
-<script src="/static/app.js?v=4"></script>
+<script src="/static/app.js?v=5"></script>
 </body>
 </html>

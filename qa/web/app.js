@@ -5,7 +5,8 @@ const $ = (sel, el = document) => el.querySelector(sel);
 const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = (n, d = 1) => (n == null || isNaN(n) ? "–" : Number(n).toFixed(d));
-const PALETTE = ["#6366f1", "#14b8a6", "#f59e0b", "#ec4899", "#0ea5e9"];
+// Chart series colours come from CSS variables, so they follow the light / dark theme.
+const PALETTE = ["var(--c1)", "var(--c2)", "var(--c3)", "var(--c4)", "var(--c5)"];
 
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
@@ -390,7 +391,7 @@ function groupedBars({ groups, series, max = 100, height = 230, unit = "" }) {
     series.forEach((se, si) => {
       const v = se.values[gi]; if (v == null) return;
       const h = (H - T - B) * (v / max), x = x0 + si * (bw + 2), y = H - B - h;
-      s += `<rect x="${x}" y="${y}" width="${bw}" height="${h}" rx="3" fill="${se.color}"><title>${esc(se.name)} · ${esc(g)}: ${fmt(v)}</title></rect>`;
+      s += `<rect x="${x}" y="${y}" width="${bw}" height="${h}" rx="3" style="fill:${se.color}"><title>${esc(se.name)} · ${esc(g)}: ${fmt(v)}</title></rect>`;
       if (series.length <= 3) s += `<text class="val" x="${x + bw / 2}" y="${y - 4}" text-anchor="middle">${fmt(v, 0)}</text>`;
     });
     s += `<text class="lbl" x="${L + gi * gw + gw / 2}" y="${H - 8}" text-anchor="middle">${esc(g)}</text>`;
@@ -406,8 +407,8 @@ function hBars(rows, { max = 100 } = {}) {
     s += `<text class="lbl" x="${L - 10}" y="${y + 13}" text-anchor="end">${esc(r.label)}</text>`;
     s += `<text x="${L - 10}" y="${y + 26}" text-anchor="end">${esc(r.sub || "")}</text>`;
     const w1 = (W - L - 60) * (r.em / max), w2 = (W - L - 60) * (r.f1 / max);
-    s += `<rect x="${L}" y="${y + 2}" width="${w2}" height="12" rx="3" fill="${PALETTE[1]}" opacity=".85"><title>F1 ${fmt(r.f1)}</title></rect>`;
-    s += `<rect x="${L}" y="${y + 16}" width="${w1}" height="12" rx="3" fill="${PALETTE[0]}"><title>EM ${fmt(r.em)}</title></rect>`;
+    s += `<rect x="${L}" y="${y + 2}" width="${w2}" height="12" rx="3" style="fill:${PALETTE[1]}"><title>F1 ${fmt(r.f1)}</title></rect>`;
+    s += `<rect x="${L}" y="${y + 16}" width="${w1}" height="12" rx="3" style="fill:${PALETTE[0]}"><title>EM ${fmt(r.em)}</title></rect>`;
     s += `<text class="val" x="${L + w2 + 6}" y="${y + 12}">${fmt(r.f1)}</text><text class="val" x="${L + w1 + 6}" y="${y + 26}">${fmt(r.em)}</text>`;
   });
   return s + "</svg>";
@@ -421,8 +422,8 @@ function lineChart(series, { xs, minY = 50, maxY = 100 }) {
   for (let v = minY; v <= maxY; v += (maxY - minY) / 5) s += `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end">${Math.round(v)}</text>`;
   xs.forEach((x) => { s += `<text class="lbl" x="${X(x)}" y="${H - 8}" text-anchor="middle">${Math.round(x * 100)}%</text>`; });
   series.forEach((se) => {
-    s += `<polyline fill="none" stroke="${se.color}" stroke-width="2.5" points="${se.points.map(([x, y]) => `${X(x)},${Y(y)}`).join(" ")}"/>`;
-    se.points.forEach(([x, y]) => { s += `<circle cx="${X(x)}" cy="${Y(y)}" r="4" fill="${se.color}"><title>${esc(se.name)} @ ${Math.round(x * 100)}%: EM ${fmt(y)}</title></circle>`; });
+    s += `<polyline fill="none" style="stroke:${se.color}" stroke-width="2.5" points="${se.points.map(([x, y]) => `${X(x)},${Y(y)}`).join(" ")}"/>`;
+    se.points.forEach(([x, y]) => { s += `<circle cx="${X(x)}" cy="${Y(y)}" r="4" style="fill:${se.color}"><title>${esc(se.name)} @ ${Math.round(x * 100)}%: EM ${fmt(y)}</title></circle>`; });
   });
   return s + "</svg>";
 }
@@ -434,7 +435,7 @@ function lossSpark(hist) {
   const W = 300, H = 70, xs = hist.map((h) => h.epoch), ys = hist.map((h) => +h.loss);
   const mn = Math.min(...ys), mx = Math.max(...ys);
   const pts = hist.map((h, i) => `${4 + (W - 8) * (i / (hist.length - 1 || 1))},${6 + (H - 12) * (1 - (ys[i] - mn) / (mx - mn || 1))}`).join(" ");
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Training loss curve"><polyline fill="none" stroke="${PALETTE[0]}" stroke-width="2" points="${pts}"/></svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Training loss curve"><polyline fill="none" style="stroke:${PALETTE[0]}" stroke-width="2" points="${pts}"/></svg>`;
 }
 
 async function renderResults() {
