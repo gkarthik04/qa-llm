@@ -177,6 +177,14 @@ corrected run.
 Requires Python 3.10+ (tested on 3.11, Windows 11, CPU only). No GPU needed.
 
 ```bash
+git clone https://github.com/gkarthik04/qa-llm.git
+```
+
+```bash
+cd qa-llm
+```
+
+```bash
 python -m venv .venv
 ```
 
