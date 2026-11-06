@@ -7,3 +7,4 @@ index/
 *.zip
 .ipynb_checkpoints/
 eval_run.log
+adv_run.log

@@ -1,5 +1,36 @@
 # Architecture
 
+## v2 pipeline (default)
+
+```mermaid
+flowchart LR
+    Q[Question] --> D[Dense: MiniLM + FAISS]
+    Q --> B[BM25]
+    D --> F[Reciprocal Rank Fusion<br/>top 20]
+    B --> F
+    F --> R[Cross-encoder re-rank<br/>ms-marco-MiniLM-L-6-v2]
+    R -->|top-k passages + P(relevant)| X[DistilBERT ours<br/>calibrated span scoring]
+    R -->|top-k passages| G[Flan-T5-base<br/>sequence probability]
+    X --> A[Answer + confidence + evidence]
+    G --> A
+    X -.compare mode.-> AG{Agree?}
+    G -.compare mode.-> AG
+    U[Uploaded PDF / TXT / MD] -->|chunk ~120 words, overlap 30| UI[(Per-session dense + BM25 index)]
+    UI --> F
+```
+
+**Calibrated span scoring.** For window *w* of passage *p*, the reader's start and end logits are
+turned into log-probabilities over that window's context tokens. A span's score is
+`log P(start) + log P(end) + log P(p | q)`, where `P(p | q)` is a softmax over the cross-encoder
+logits of the top-k passages (or over cosine/0.05 without re-ranking). Confidence is the softmax
+mass of all candidate spans with the same normalised text.
+
+**Generative confidence.** The product of the probabilities of the tokens Flan-T5 generated (greedy).
+
+**Agreement.** Token-F1 between the two answers >= 0.5.
+
+## v1 pipeline
+
 ```mermaid
 flowchart LR
     subgraph Offline
@@ -33,13 +64,18 @@ flowchart LR
 | `qa/config.py` | Model names, paths, tokenisation sizes (overridable with `QA_*` env vars) |
 | `qa/data.py` | Load SQuAD via `datasets`, deduplicate paragraphs into a passage corpus, map questions to gold passage ids |
 | `qa/retriever.py` | `DenseRetriever`: Sentence-Transformers encoder + FAISS `IndexFlatIP`; build / save / load / search |
+| `qa/bm25.py` | Okapi BM25 (k1 1.5, b 0.75) with precomputed posting weights, NumPy only |
+| `qa/search.py` | `SearchEngine`: dense / BM25 / hybrid (RRF, k = 60) search, optional cross-encoder re-ranking, passage priors |
+| `qa/documents.py` | PDF/TXT/MD text extraction (pypdf), sentence-aware chunking, in-memory `DocumentStore` with its own `SearchEngine` |
 | `qa/readers.py` | `ExtractiveReader` (DistilBERT span scoring across several passages and overflow windows) and `GenerativeReader` (Flan-T5 prompt + generate) with a common `read_batch` interface |
 | `qa/pipeline.py` | `QAPipeline.ask()`: retrieve top-k, read, return answer + provenance + latency |
 | `qa/train.py` | Fine-tunes DistilBERT on SQuAD train with the HF `Trainer`, logs validation loss before/after |
 | `qa/metrics.py` | Official-style SQuAD EM / F1 normalisation, Recall@k, MRR |
 | `qa/evaluate.py` | Measures retrieval and both readers (oracle passage vs. retrieved passages), writes `results/` and the README table |
+| `qa/evaluate_advanced.py` | Measures retrieval variants, raw vs calibrated scoring, reader agreement and selective answering |
 | `qa/cli.py` | `ask`, `compare`, `chat`, `read` commands |
-| `qa/api.py` | FastAPI service with JSON endpoints and a small HTML front-end |
+| `qa/api.py` | FastAPI JSON API (`/api/*`) that also serves the web app |
+| `qa/web/` | QA Studio front end: `index.html`, `styles.css`, `app.js` (no framework, no build step) |
 
 ## Design notes
 

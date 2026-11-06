@@ -16,6 +16,7 @@ fi
 "$PY" -m qa.train
 "$PY" -m qa.build_index
 "$PY" -m qa.evaluate
+"$PY" -m qa.evaluate_advanced
 "$PY" -m pytest -q
 
 echo

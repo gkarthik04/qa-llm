@@ -19,6 +19,7 @@ Step "Install requirements" { & $py -m pip install -r requirements.txt }
 Step "Fine-tune DistilBERT" { & $py -m qa.train }
 Step "Build FAISS index"   { & $py -m qa.build_index }
 Step "Evaluate"            { & $py -m qa.evaluate }
+Step "Evaluate v2 features" { & $py -m qa.evaluate_advanced }
 Step "Tests"               { & $py -m pytest -q }
 
 Write-Host "`nDone. Try:  $py -m qa.cli ask `"Who was the Super Bowl 50 MVP?`""

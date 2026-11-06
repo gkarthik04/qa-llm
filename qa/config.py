@@ -21,6 +21,18 @@ BASE_READER = _env("BASE_READER", "distilbert-base-cased-distilled-squad")
 FINETUNED_READER_DIR = Path(_env("FINETUNED_READER_DIR", str(ROOT / "models" / "distilbert-squad-finetuned")))
 GEN_MODEL = _env("GEN_MODEL", "google/flan-t5-base")
 EMBED_MODEL = _env("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+RERANK_MODEL = _env("RERANK_MODEL", "cross-encoder/ms-marco-MiniLM-L-6-v2")
+
+# Pipeline defaults (CLI / API). Chosen from the measurements in results/advanced.json.
+DEFAULT_RETRIEVAL = _env("DEFAULT_RETRIEVAL", "hybrid")          # dense | bm25 | hybrid
+DEFAULT_RERANK = _env("DEFAULT_RERANK", "1") == "1"
+DEFAULT_SCORING = _env("DEFAULT_SCORING", "calibrated")         # raw | calibrated
+
+# Uploaded documents (web app): chunk size in words, overlap, and limits
+CHUNK_WORDS = int(_env("CHUNK_WORDS", "120"))
+CHUNK_OVERLAP = int(_env("CHUNK_OVERLAP", "30"))
+MAX_UPLOAD_MB = int(_env("MAX_UPLOAD_MB", "15"))
+MAX_UPLOAD_CHUNKS = int(_env("MAX_UPLOAD_CHUNKS", "3000"))
 
 # Paths
 INDEX_DIR = Path(_env("INDEX_DIR", str(ROOT / "index")))

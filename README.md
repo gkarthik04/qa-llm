@@ -4,20 +4,42 @@ Retrieval-augmented question answering over SQuAD v1.1, built as the completion 
 summer 2025 research internship project *"Question Answering in LLMs"* (SRM University AP,
 guide: Dr. M. Krishna Siva Prasad).
 
+It has two layers:
+
+**Core (the internship project, completed):**
+
 * **Retriever**: Sentence-Transformers (`all-MiniLM-L6-v2`) embeddings + FAISS exact cosine search over SQuAD passages
 * **Reader 1 (extractive)**: `distilbert-base-cased-distilled-squad`, **fine-tuned by us** on SQuAD with the Hugging Face `Trainer`
 * **Reader 2 (generative)**: `google/flan-t5-base`, zero-shot
 * **Evaluation**: measured Exact Match, F1, Recall@k and MRR
-* **Interfaces**: CLI (`python -m qa.cli`) and a FastAPI service with a small web page
+
+**Extensions (v2) - each one measured, see [Results v2](#results-v2-extensions):**
+
+| Feature | What it does | Measured effect |
+|---|---|---|
+| **Hybrid retrieval** | BM25 + dense rankings fused with Reciprocal Rank Fusion ([qa/bm25.py](qa/bm25.py), [qa/search.py](qa/search.py)) | Recall@10 90.9 -> 96.7 |
+| **Cross-encoder re-ranking** | `ms-marco-MiniLM-L-6-v2` rescores the top 20 passages | Recall@1 60.7 -> 87.6, Recall@3 79.5 -> 96.1; pipeline F1 65.6 -> 76.4 |
+| **Calibrated span scoring** | per-window softmax probabilities x passage probability, instead of raw logits ([qa/readers.py](qa/readers.py)) | +1.8 EM / +1.2 F1 over raw logits on the same passages |
+| **Answer confidence** | probability of each answer (span mass for DistilBERT, sequence probability for Flan-T5) | answering the 60 % most-confident questions: EM 87-89 vs 70-76 on all |
+| **Dual-reader agreement** | both readers answer from the same evidence; agreement flags trustworthy answers | agree (76 % of questions): EM 84; disagree: EM 25 (DistilBERT) |
+| **Bring your own documents** | upload PDF / TXT / MD; chunked and indexed on the fly ([qa/documents.py](qa/documents.py)) | - (no labels) |
+| **QA Studio web app** | chat UI with evidence highlighting, confidence rings, compare mode, uploads, live results dashboard, dark mode ([qa/web/](qa/web)) | - |
+
+* **Interfaces**: CLI (`python -m qa.cli`) and a FastAPI service + web app (`uvicorn qa.api:app`)
 
 ```
-question ─► MiniLM encoder ─► FAISS top-k ─► passages ─┬─► DistilBERT (span extraction) ─┐
-                                                        └─► Flan-T5 (generation) ─────────┴─► answer + source
+question --> BM25 ---+
+                     +-- RRF fusion --> top 20 --> cross-encoder re-rank --> top-k passages (+ P(relevant))
+question --> MiniLM -+                                                              |
+                                  +-------------------------------------------------+
+                                  v                                                 v
+                 DistilBERT (ours), calibrated span scoring            Flan-T5 (generation)
+                                  +------> answer + confidence + agreement <--------+
 ```
 
 See [docs/architecture.md](docs/architecture.md) for the full diagram and design notes.
 
-## Results
+## Results v1 (baseline)
 
 All numbers below were produced by `python -m qa.evaluate` on the machine noted, and are
 written into this section automatically. Raw numbers: [results/results.json](results/results.json);
@@ -73,6 +95,77 @@ Measured on `12th Gen Intel(R) Core(TM) i5-1235U, 10 threads` (CPU only, 2026-11
    Bowl 50?", both DistilBERT readers answer *Carolina Panthers* (the losing team named in the
    same sentence) even with the gold passage alone, while Flan-T5 answers *Denver Broncos*.
 
+## Results v2 (extensions)
+
+Produced by `python -m qa.evaluate_advanced` (raw numbers: [results/advanced.json](results/advanced.json),
+per-question predictions with confidences: `results/predictions_advanced.jsonl`). Default pipeline in the
+CLI / API / web app = the best measured setting: **hybrid retrieval + re-ranking + calibrated scoring**.
+
+<!-- ADVANCED:START -->
+Measured on `12th Gen Intel(R) Core(TM) i5-1235U, 10 threads` (CPU only, 2026-11-06). Retrieval: 1,000 questions; readers: 500 questions (the same seeded sample as the baseline table), top-3 passages.
+
+**A. Retrieval variants**
+
+| Retriever | Recall@1 | Recall@3 | Recall@5 | Recall@10 | MRR@10 | ms / query |
+|---|---:|---:|---:|---:|---:|---:|
+| Dense (MiniLM + FAISS) | 60.7 | 79.5 | 86.0 | 90.9 | 71.2 | 3 |
+| BM25 | 77.5 | 89.2 | 91.9 | 94.4 | 83.8 | 3 |
+| Hybrid (RRF dense + BM25) | 70.4 | 87.6 | 93.1 | 96.7 | 80.1 | 3 |
+| Hybrid + cross-encoder re-rank (top 20) | 87.6 | 96.1 | 97.5 | 98.3 | 91.9 | 653 |
+
+**B. Full pipeline (retrieve top-3 -> read)**
+
+| Retrieval | Reader | Scoring | EM | F1 | ms / question (read) |
+|---|---|---|---:|---:|---:|
+| dense | DistilBERT (fine-tuned by us) | raw | 56.60 | 65.58 | 512 |
+| hybrid + re-rank | DistilBERT (fine-tuned by us) | raw | 68.00 | 76.35 | 528 |
+| hybrid + re-rank | DistilBERT (fine-tuned by us) | calibrated | 69.80 | 77.50 | 515 |
+| hybrid + re-rank | Flan-T5 (flan-t5-base) | - | 75.80 | 82.91 | 931 |
+| hybrid + re-rank | Ensemble (agreement / confidence) | calibrated | 75.20 | 82.37 | 1446 |
+
+**C. Dual-reader agreement** (calibrated DistilBERT vs Flan-T5 on the same hybrid + re-ranked passages)
+
+| Subset | Questions | DistilBERT EM | Flan-T5 EM |
+|---|---:|---:|---:|
+| readers agree (answer F1 >= 0.5) | 382 (76.4 %) | 83.8 | 84.6 |
+| readers disagree | 118 | 24.6 | 47.5 |
+
+Ensemble (agree -> extractive span, disagree -> the more confident reader): **EM 75.20 / F1 82.37**.
+
+**D. Selective answering** - answer only the most confident questions:
+
+| Coverage | Calibrated DistilBERT EM / F1 | Flan-T5 EM / F1 |
+|---:|---:|---:|
+| 100 % | 69.8 / 77.5 | 75.8 / 82.9 |
+| 80 % | 78.8 / 84.7 | 85.5 / 89.8 |
+| 60 % | 87.0 / 89.9 | 89.0 / 91.7 |
+| 40 % | 94.0 / 94.6 | 93.5 / 94.6 |
+<!-- ADVANCED:END -->
+
+### What the v2 numbers say
+
+1. **Retrieval was the bottleneck, and fixing it is the biggest win.** On SQuAD, BM25 alone beats
+   the dense MiniLM retriever (Recall@1 77.5 vs 60.7), because SQuAD questions were written by
+   people reading the passage and reuse its words. Hybrid fusion improves deep recall
+   (Recall@10 96.7). The cross-encoder then puts the right passage first 87.6 % of the time
+   (vs 60.7 %). Our DistilBERT, reading the same 500 questions, goes from F1 65.6 to 76.4, and
+   Flan-T5 from 68.7 to 82.9.
+2. **Calibrated span scoring helps, modestly.** Turning each window's logits into probabilities
+   and weighting by the passage probability gives +1.8 EM / +1.2 F1 over raw logits on identical
+   passages. That gain is small for a 500-question sample, so it is a consistent improvement
+   rather than a dramatic one. It does not fix every case: for "Who was the Super Bowl 50 MVP?"
+   the calibrated reader prefers *Peyton Manning*, from a passage the re-ranker scores highly,
+   where raw scoring finds *Von Miller*.
+3. **Reader agreement is a very good confidence signal, but not a better answer.** When DistilBERT
+   and Flan-T5 agree (76 % of questions) both are right about 84 % of the time (EM). When they
+   disagree, DistilBERT drops to 25 % and Flan-T5 to 48 %. The simple ensemble (agree -> span,
+   disagree -> more confident reader) scores EM 75.2, about the same as Flan-T5 alone (75.8).
+   So agreement is used to *flag* answers in the UI, not to pick them.
+4. **Confidence scores are meaningful.** Answering only the 60 % most-confident questions raises
+   EM from 69.8 to 87.0 (DistilBERT) and from 75.8 to 89.0 (Flan-T5).
+5. **Cost.** Re-ranking adds ~0.65 s per question on this CPU, about the same as the DistilBERT
+   read. Flan-T5 reads in ~0.9 s.
+
 **A bug the evaluation caught.** The first evaluation gave Flan-T5 only 22.8 EM with retrieved
 passages. With three passages the prompt went past T5's 512-token limit, and right-truncation
 cut off the question at the end of the prompt. The prompt builder now trims passages to fit, so
@@ -104,7 +197,8 @@ Run the whole pipeline in order:
 ```bash
 python -m qa.train          # fine-tune DistilBERT -> models/distilbert-squad-finetuned
 python -m qa.build_index    # embed 2,067 SQuAD passages -> index/
-python -m qa.evaluate       # measure everything -> results/ and this README
+python -m qa.evaluate       # v1 measurements -> results/ and this README
+python -m qa.evaluate_advanced   # v2 features (~45 min on CPU) -> results/advanced.json and this README
 pytest -q                   # unit + integration tests
 ```
 
@@ -112,7 +206,7 @@ Or in one go: `powershell -ExecutionPolicy Bypass -File scripts\run_all.ps1` (Wi
 `bash scripts/run_all.sh` (Linux/macOS).
 
 Models and the dataset are downloaded from the Hugging Face Hub on first use
-(~1.3 GB in total, cached in `~/.cache/huggingface`).
+(~1.4 GB in total, cached in `~/.cache/huggingface`).
 
 > **Windows long paths.** If the repo sits in a very deep folder and `pip install` fails
 > with `ensurepip` / path errors, either enable Windows long-path support or create the
@@ -123,32 +217,64 @@ Models and the dataset are downloaded from the Hugging Face Hub on first use
 ### CLI
 
 ```bash
-python -m qa.cli ask "Who was the Super Bowl 50 MVP?"
+python -m qa.cli ask "Which network broadcasted Super Bowl 50 in the United States?"
 python -m qa.cli ask "Who was the Super Bowl 50 MVP?" --reader generative --top-k 5 --show-passages
-python -m qa.cli compare "Which network broadcasted Super Bowl 50 in the United States?"     # both readers side by side
-python -m qa.cli chat                                          # interactive loop
+python -m qa.cli ask "Who was the Super Bowl 50 MVP?" --retrieval dense --no-rerank --scoring raw   # v1 pipeline
+python -m qa.cli compare "Which NFL team won Super Bowl 50?"    # both readers + agree/disagree verdict
+python -m qa.cli ask "Who was the project guide?" --doc INTERNSHIP_PROJECT_REPORT.pdf             # your own file
+python -m qa.cli chat --reader compare                         # interactive loop
 python -m qa.cli read -q "What is the capital of France?" -c "France, officially the French Republic, has its capital in Paris."
 python -m qa.cli ask "Who designed the Apollo Lunar Module?" --json
 ```
 
-### API
+### Web app (QA Studio) and API
 
 ```bash
 uvicorn qa.api:app --port 8000
 ```
 
-* Web page: <http://127.0.0.1:8000>
-* Swagger UI: <http://127.0.0.1:8000/docs>
+Open <http://127.0.0.1:8000> (Swagger UI at <http://127.0.0.1:8000/docs>).
+
+The web app is plain HTML/CSS/JS served by FastAPI ([qa/web/](qa/web)): no Node, no build step.
+
+* **Ask** - chat-style conversation. Each answer card shows:
+  * the answer, a confidence ring and runner-up answers;
+  * the evidence passages with the answer highlighted and per-passage relevance, cosine and BM25 bars;
+  * a retrieve / re-rank / read latency breakdown.
+* **Compare mode** (default) - DistilBERT and Flan-T5 side by side, with a green "agree" or amber
+  "disagree" banner.
+* **Random SQuAD question** - the dice button picks a real validation question and grades the
+  answer against the gold answers (EM / F1).
+* **My documents** - drag and drop PDFs or text files; they are chunked, embedded and searchable
+  in seconds.
+* **Settings** - retrieval method (hybrid / dense / BM25), re-ranking on or off, passages to read
+  (1-10), and span scoring (calibrated / raw). They are remembered per browser.
+* **Results** - live dashboard of every measured number (charts are rendered from
+  `results/*.json`).
+* **How it works** - the pipeline explained.
+* **Look and access** - light/dark theme, responsive down to phone width, keyboard friendly
+  (`/` focuses the question box, Enter sends).
 
 ```bash
-curl -X POST http://127.0.0.1:8000/ask -H "Content-Type: application/json" -d "{\"question\": \"Who was the Super Bowl 50 MVP?\", \"reader\": \"extractive\", \"top_k\": 3}"
+curl -X POST http://127.0.0.1:8000/api/ask -H "Content-Type: application/json" -d "{\"question\": \"Who was the Super Bowl 50 MVP?\", \"reader\": \"compare\"}"
+```
+
+```bash
+curl -F "file=@report.pdf" http://127.0.0.1:8000/api/documents
 ```
 
 | Endpoint | Method | Body / response |
 |---|---|---|
-| `/ask` | POST | `{"question": str, "reader": "extractive" \| "generative", "top_k": 1-10}` -> answer, score, source title, retrieved passages, latency |
-| `/health` | GET | status, number of indexed passages, model names |
-| `/` | GET | HTML demo page |
+| `/api/ask` | POST | `{"question", "reader": "extractive" \| "generative" \| "compare", "top_k": 1-10, "retrieval": "hybrid" \| "dense" \| "bm25", "rerank": bool, "scoring": "calibrated" \| "raw", "corpus": "squad" \| "docs", "gold": [str] (optional)}` -> answer(s), confidence, alternatives, evidence with scores, timings, agreement, EM/F1 vs gold |
+| `/api/documents` | POST / GET | upload a PDF/TXT/MD (multipart `file`) / list uploads |
+| `/api/documents/{id}` | DELETE | remove an upload |
+| `/api/random` | GET | random SQuAD validation question + gold answers |
+| `/api/results` | GET | baseline, advanced and training results (JSON) |
+| `/api/health` | GET | status, passage count, model names, defaults |
+| `/ask`, `/health` | POST / GET | v1 endpoints, kept for compatibility |
+
+Uploaded documents live in server memory (cleared on restart). Limits: 15 MB per file, 3,000
+passages in total. Scanned PDFs without a text layer need OCR first.
 
 ## Training (fine-tuning DistilBERT)
 
@@ -202,20 +328,25 @@ qa-llm/
 ├── qa/
 │   ├── config.py        # model names, paths, sizes (env-overridable: QA_*)
 │   ├── data.py          # SQuAD loading, passage corpus
-│   ├── retriever.py     # Sentence-Transformers + FAISS
-│   ├── readers.py       # DistilBERT extractive + Flan-T5 generative readers
-│   ├── pipeline.py      # retrieve -> read
+│   ├── retriever.py     # Sentence-Transformers + FAISS index (build / load)
+│   ├── bm25.py          # Okapi BM25 (NumPy)
+│   ├── search.py        # dense / BM25 / hybrid (RRF) search + cross-encoder re-ranking
+│   ├── documents.py     # PDF/TXT/MD upload -> chunks -> on-the-fly index
+│   ├── readers.py       # DistilBERT (raw / calibrated scoring) + Flan-T5 readers with confidence
+│   ├── pipeline.py      # retrieve -> read, compare() with agreement
 │   ├── train.py         # fine-tuning with HF Trainer
 │   ├── build_index.py   # build FAISS index
-│   ├── evaluate.py      # EM / F1 / Recall@k / MRR, writes results + README table
+│   ├── evaluate.py      # v1: EM / F1 / Recall@k / MRR, writes results + README table
+│   ├── evaluate_advanced.py  # v2: retrieval variants, scoring, agreement, selective answering
 │   ├── metrics.py       # SQuAD metrics
 │   ├── cli.py           # command-line interface
-│   └── api.py           # FastAPI app + web page
-├── tests/               # metric unit tests, pipeline/API integration tests
+│   ├── api.py           # FastAPI JSON API, serves the web app
+│   └── web/             # QA Studio front end (index.html, styles.css, app.js)
+├── tests/               # unit tests (metrics, BM25, chunking, PDF) + pipeline/API integration tests
 ├── notebooks/train_on_colab.ipynb
 ├── scripts/run_all.ps1, run_all.sh
 ├── docs/architecture.md
-├── results/             # results.json, results.md, training_log.json
+├── results/             # results.json, advanced.json, training_log.json, predictions
 ├── requirements.txt
 └── README.md
 ```
@@ -231,6 +362,8 @@ QA_GEN_MODEL=google/flan-t5-large python -m qa.evaluate --readers flan
 ```
 
 Available: `QA_BASE_READER`, `QA_FINETUNED_READER_DIR`, `QA_GEN_MODEL`, `QA_EMBED_MODEL`,
+`QA_RERANK_MODEL`, `QA_DEFAULT_RETRIEVAL`, `QA_DEFAULT_RERANK` (`1`/`0`), `QA_DEFAULT_SCORING`,
+`QA_CHUNK_WORDS`, `QA_CHUNK_OVERLAP`, `QA_MAX_UPLOAD_MB`, `QA_MAX_UPLOAD_CHUNKS`,
 `QA_INDEX_DIR`, `QA_RESULTS_DIR`, `QA_MAX_LENGTH`, `QA_DOC_STRIDE`, `QA_SEED`.
 
 ## Authors

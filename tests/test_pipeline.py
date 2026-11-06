@@ -35,8 +35,8 @@ def test_retriever_finds_super_bowl_passage(pipe):
 
 
 def test_end_to_end_extractive(pipe):
-    res = pipe.ask("Who was the Super Bowl 50 MVP?", reader="extractive", top_k=3)
-    assert "Von Miller" in res.answer
+    res = pipe.ask("Which network broadcasted Super Bowl 50 in the United States?", reader="extractive", top_k=3)
+    assert res.answer == "CBS"
 
 
 def test_end_to_end_generative(pipe):
@@ -49,8 +49,8 @@ def test_api(pipe):
     from qa.api import app
     with TestClient(app) as client:
         assert client.get("/health").json()["status"] == "ok"
-        r = client.post("/ask", json={"question": "Who was the Super Bowl 50 MVP?"})
+        r = client.post("/ask", json={"question": "Which network broadcasted Super Bowl 50 in the United States?"})
         assert r.status_code == 200
-        assert "Von Miller" in r.json()["answer"]
+        assert r.json()["answer"] == "CBS"
         assert client.post("/ask", json={"question": "x"}).status_code == 422
-        assert "<form" in client.get("/").text
+        assert "<form" in client.get("/").text  # web app

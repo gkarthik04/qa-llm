@@ -1,0 +1,159 @@
+{
+  "settings": {
+    "date": "2026-11-06",
+    "machine": "12th Gen Intel(R) Core(TM) i5-1235U, 10 threads",
+    "retrieval_samples": 1000,
+    "reader_samples": 500,
+    "rerank_model": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "rerank_candidates": 20,
+    "seed": 42
+  },
+  "retrieval": {
+    "Dense (MiniLM + FAISS)": {
+      "recall@1": 60.7,
+      "recall@3": 79.5,
+      "recall@5": 86.0,
+      "recall@10": 90.9,
+      "mrr@10": 71.24234126984129,
+      "ms_per_query": 2.999920599977486
+    },
+    "BM25": {
+      "recall@1": 77.5,
+      "recall@3": 89.2,
+      "recall@5": 91.9,
+      "recall@10": 94.4,
+      "mrr@10": 83.77246031746034,
+      "ms_per_query": 3.119971700012684
+    },
+    "Hybrid (RRF dense + BM25)": {
+      "recall@1": 70.4,
+      "recall@3": 87.6,
+      "recall@5": 93.1,
+      "recall@10": 96.7,
+      "mrr@10": 80.1434126984127,
+      "ms_per_query": 3.160671600024216
+    },
+    "Hybrid + cross-encoder re-rank (top 20)": {
+      "recall@1": 87.6,
+      "recall@3": 96.1,
+      "recall@5": 97.5,
+      "recall@10": 98.3,
+      "mrr@10": 91.8862301587302,
+      "ms_per_query": 652.7218717999058
+    }
+  },
+  "readers": [
+    {
+      "retrieval": "dense",
+      "reader": "DistilBERT (fine-tuned by us)",
+      "scoring": "raw",
+      "ms_per_question": 512.1147147999145,
+      "exact_match": 56.6,
+      "f1": 65.58332267388616,
+      "n": 500
+    },
+    {
+      "retrieval": "hybrid + re-rank",
+      "reader": "DistilBERT (fine-tuned by us)",
+      "scoring": "raw",
+      "ms_per_question": 528.4020602002274,
+      "exact_match": 68.0,
+      "f1": 76.35439298919178,
+      "n": 500
+    },
+    {
+      "retrieval": "hybrid + re-rank",
+      "reader": "DistilBERT (fine-tuned by us)",
+      "scoring": "calibrated",
+      "ms_per_question": 514.6962252000812,
+      "exact_match": 69.8,
+      "f1": 77.50040095783132,
+      "n": 500
+    },
+    {
+      "retrieval": "hybrid + re-rank",
+      "reader": "Flan-T5 (flan-t5-base)",
+      "scoring": "-",
+      "ms_per_question": 930.8613265999593,
+      "exact_match": 75.8,
+      "f1": 82.91358033771618,
+      "n": 500
+    },
+    {
+      "retrieval": "hybrid + re-rank",
+      "reader": "Ensemble (agreement / confidence)",
+      "scoring": "calibrated",
+      "ms_per_question": 1445.5575518000405,
+      "exact_match": 75.2,
+      "f1": 82.36502043879753,
+      "n": 500
+    }
+  ],
+  "agreement": {
+    "agree_n": 382,
+    "agree_rate": 76.4,
+    "disagree_n": 118,
+    "agree_em_ext": 83.7696335078534,
+    "agree_em_gen": 84.55497382198953,
+    "disagree_em_ext": 24.576271186440678,
+    "disagree_em_gen": 47.45762711864407,
+    "ensemble": {
+      "exact_match": 75.2,
+      "f1": 82.36502043879753
+    }
+  },
+  "selective": {
+    "extractive_calibrated": [
+      {
+        "coverage": 1.0,
+        "n": 500,
+        "exact_match": 69.8,
+        "f1": 77.50040095783129
+      },
+      {
+        "coverage": 0.8,
+        "n": 400,
+        "exact_match": 78.75,
+        "f1": 84.67785790920465
+      },
+      {
+        "coverage": 0.6,
+        "n": 300,
+        "exact_match": 87.0,
+        "f1": 89.8652530017855
+      },
+      {
+        "coverage": 0.4,
+        "n": 200,
+        "exact_match": 94.0,
+        "f1": 94.64285714285714
+      }
+    ],
+    "generative": [
+      {
+        "coverage": 1.0,
+        "n": 500,
+        "exact_match": 75.8,
+        "f1": 82.91358033771616
+      },
+      {
+        "coverage": 0.8,
+        "n": 400,
+        "exact_match": 85.5,
+        "f1": 89.79633648515227
+      },
+      {
+        "coverage": 0.6,
+        "n": 300,
+        "exact_match": 89.0,
+        "f1": 91.6744082428293
+      },
+      {
+        "coverage": 0.4,
+        "n": 200,
+        "exact_match": 93.5,
+        "f1": 94.56666666666666
+      }
+    ]
+  }
+}

@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QA Studio</title>
+  <meta name="description" content="Retrieval-augmented question answering over SQuAD and your own documents">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234f46e5'/><text x='16' y='22' font-family='Arial' font-size='16' font-weight='700' text-anchor='middle' fill='white'>Q</text></svg>">
+  <link rel="stylesheet" href="/static/styles.css?v=4">
+  <script>
+    try { const t = localStorage.getItem("qa-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ===== Sidebar: knowledge source + settings ===== -->
+  <aside class="sidebar" id="sidebar" aria-label="Settings">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">Q</div>
+      <div>
+        <div class="brand-name">QA Studio</div>
+        <div class="brand-sub">Question Answering in LLMs</div>
+      </div>
+      <button class="icon-btn only-mobile" id="closeSidebar" aria-label="Close settings">✕</button>
+    </div>
+
+    <section class="panel">
+      <h2 class="panel-title">Knowledge source</h2>
+      <div class="source-list" role="radiogroup" aria-label="Knowledge source">
+        <label class="source">
+          <input type="radio" name="corpus" value="squad" checked>
+          <span class="source-body">
+            <span class="source-name">SQuAD · Wikipedia</span>
+            <span class="source-meta" id="squadMeta">2,067 passages</span>
+          </span>
+        </label>
+        <label class="source">
+          <input type="radio" name="corpus" value="docs" id="docsRadio">
+          <span class="source-body">
+            <span class="source-name">My documents</span>
+            <span class="source-meta" id="docsMeta">No files yet</span>
+          </span>
+        </label>
+      </div>
+
+      <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload PDF, TXT or MD files">
+        <input type="file" id="fileInput" accept=".pdf,.txt,.md" multiple hidden>
+        <div class="dz-icon" aria-hidden="true">⇪</div>
+        <div><strong>Drop PDF / TXT / MD</strong><br><span class="muted">or click to browse · indexed on the fly</span></div>
+      </div>
+      <ul class="doc-list" id="docList"></ul>
+    </section>
+
+    <section class="panel">
+      <h2 class="panel-title">Answering</h2>
+      <div class="segmented" role="radiogroup" aria-label="Reader" data-name="reader">
+        <button role="radio" data-value="extractive" aria-checked="true">Extractive</button>
+        <button role="radio" data-value="generative" aria-checked="false">Generative</button>
+        <button role="radio" data-value="compare" aria-checked="false">Compare</button>
+      </div>
+      <p class="hint" id="readerHint">DistilBERT, fine-tuned by us, extracts the answer span from the passages.</p>
+
+      <div class="field" id="scoringField">
+        <div class="field-label">Span scoring <span class="info" title="Calibrated: per-window softmax probabilities combined with the retriever's passage probability. Raw: start+end logits (classic recipe).">?</span></div>
+        <div class="segmented small" role="radiogroup" aria-label="Span scoring" data-name="scoring">
+          <button role="radio" data-value="calibrated" aria-checked="true">Calibrated</button>
+          <button role="radio" data-value="raw" aria-checked="false">Raw logits</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2 class="panel-title">Retrieval</h2>
+      <div class="segmented small" role="radiogroup" aria-label="Retrieval method" data-name="retrieval">
+        <button role="radio" data-value="hybrid" aria-checked="true">Hybrid</button>
+        <button role="radio" data-value="dense" aria-checked="false">Dense</button>
+        <button role="radio" data-value="bm25" aria-checked="false">BM25</button>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="rerank" checked>
+        <span class="track" aria-hidden="true"><span class="thumb"></span></span>
+        <span>Cross-encoder re-ranking</span>
+      </label>
+      <div class="field">
+        <div class="field-label">Passages to read <output id="topkOut">3</output></div>
+        <input type="range" id="topk" min="1" max="10" value="3" aria-label="Number of passages">
+      </div>
+    </section>
+
+    <div class="sidebar-foot">
+      <span class="status-dot" id="statusDot"></span><span id="statusText">Connecting…</span>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+
+  <!-- ===== Main ===== -->
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn only-mobile" id="openSidebar" aria-label="Open settings">☰</button>
+      <nav class="tabs" role="tablist">
+        <button role="tab" class="tab" aria-selected="true" data-view="ask">Ask</button>
+        <button role="tab" class="tab" aria-selected="false" data-view="results">Results</button>
+        <button role="tab" class="tab" aria-selected="false" data-view="about">How it works</button>
+      </nav>
+      <div class="topbar-actions">
+        <button class="ghost-btn" id="clearChat" title="Clear conversation">Clear</button>
+        <button class="icon-btn" id="themeToggle" aria-label="Toggle dark mode" title="Toggle theme">◐</button>
+      </div>
+    </header>
+
+    <!-- Ask view -->
+    <section class="view" id="view-ask" aria-label="Ask">
+      <div class="thread" id="thread" aria-live="polite">
+        <div class="empty" id="empty">
+          <h1>Ask anything about the passages</h1>
+          <p>Hybrid search finds the evidence, a cross-encoder ranks it, and two different readers answer: a span extractor and a generator. You see the evidence, the confidence, and whether the readers agree.</p>
+          <div class="chips" id="suggestions">
+            <button class="chip">Who was the Super Bowl 50 MVP?</button>
+            <button class="chip">What causes the Rhine to flow faster in some places?</button>
+            <button class="chip">Which NFL team won Super Bowl 50?</button>
+            <button class="chip">What is the main role of chloroplasts?</button>
+          </div>
+          <button class="primary-outline" id="randomBtn">🎲 Random SQuAD question (graded against gold)</button>
+        </div>
+      </div>
+
+      <form class="composer" id="composer">
+        <div class="composer-inner">
+          <textarea id="question" rows="1" placeholder="Ask a question…  (press / to focus)" maxlength="500" aria-label="Question"></textarea>
+          <button type="button" class="icon-btn" id="randomInline" title="Random SQuAD question" aria-label="Random SQuAD question">🎲</button>
+          <button type="submit" class="send" id="send" aria-label="Ask">➤</button>
+        </div>
+        <div class="composer-meta" id="composerMeta"></div>
+      </form>
+    </section>
+
+    <!-- Results view -->
+    <section class="view" id="view-results" hidden aria-label="Results">
+      <div class="page" id="resultsPage"><div class="loading-line">Loading measured results…</div></div>
+    </section>
+
+    <!-- About view -->
+    <section class="view" id="view-about" hidden aria-label="How it works">
+      <div class="page prose">
+        <h1>How it works</h1>
+        <ol class="pipeline">
+          <li><b>Retrieve</b><span>The question is matched two ways: <em>dense</em> (MiniLM sentence embeddings, FAISS cosine search) and <em>lexical</em> (BM25). The two rankings are fused with Reciprocal Rank Fusion, so exact names and numbers are not lost.</span></li>
+          <li><b>Re-rank</b><span>A cross-encoder (MS-MARCO MiniLM) reads the question and each of the top 20 passages together and reorders them. Its scores become a probability for each passage.</span></li>
+          <li><b>Read</b><span><em>Extractive:</em> DistilBERT, fine-tuned by us on SQuAD, scores every start/end span. With calibrated scoring, each window's logits become probabilities and are multiplied by the passage probability, so the scores are comparable across passages. <em>Generative:</em> Flan-T5 writes the answer from the passages, and its confidence is the probability of the generated sequence.</span></li>
+          <li><b>Cross-check</b><span>In Compare mode both readers answer from the same evidence. When they agree, accuracy is much higher; when they disagree, the UI flags the answer.</span></li>
+          <li><b>Your documents</b><span>Uploaded PDFs and text files are split into overlapping ~120-word passages and indexed into their own dense + BM25 index, so the same pipeline answers questions about them.</span></li>
+        </ol>
+        <p class="muted">API docs: <a href="/docs">/docs</a> · Source: <code>qa/</code> · Every number on the Results tab comes from <code>python -m qa.evaluate</code> and <code>python -m qa.evaluate_advanced</code>.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<template id="tpl-loading">
+  <div class="turn assistant">
+    <div class="card loading-card">
+      <div class="steps">
+        <span class="step" data-step="0">Retrieving</span>
+        <span class="step" data-step="1">Re-ranking</span>
+        <span class="step" data-step="2">Reading</span>
+      </div>
+      <div class="skeleton w60"></div><div class="skeleton w90"></div><div class="skeleton w75"></div>
+    </div>
+  </div>
+</template>
+
+<script src="/static/app.js?v=4"></script>
+</body>
+</html>
