@@ -1,0 +1,84 @@
+{
+  "base_model": "distilbert-base-cased-distilled-squad",
+  "train_examples": 3000,
+  "train_features": 3044,
+  "eval_examples": 300,
+  "epochs": 1,
+  "max_steps": -1,
+  "global_steps": 191,
+  "learning_rate": 3e-05,
+  "batch_size": 16,
+  "max_length": 384,
+  "stride": 128,
+  "device": "cpu",
+  "cpu": "12th Gen Intel(R) Core(TM) i5-1235U",
+  "train_minutes": 37.42,
+  "final_train_loss": 0.5787,
+  "eval_loss_before": 0.9923,
+  "eval_loss_after": 0.9893,
+  "loss_history": [
+    {
+      "loss": 0.6309767246246338,
+      "grad_norm": 19.465272903442383,
+      "learning_rate": 2.8499999999999998e-05,
+      "epoch": 0.10471204188481675,
+      "step": 20
+    },
+    {
+      "loss": 0.5722824096679687,
+      "grad_norm": 19.183143615722656,
+      "learning_rate": 2.6666666666666667e-05,
+      "epoch": 0.2094240837696335,
+      "step": 40
+    },
+    {
+      "loss": 0.5802539348602295,
+      "grad_norm": 4.9370222091674805,
+      "learning_rate": 2.3157894736842103e-05,
+      "epoch": 0.31413612565445026,
+      "step": 60
+    },
+    {
+      "loss": 0.6911683559417725,
+      "grad_norm": 11.018510818481445,
+      "learning_rate": 1.9649122807017544e-05,
+      "epoch": 0.418848167539267,
+      "step": 80
+    },
+    {
+      "loss": 0.5459399700164795,
+      "grad_norm": 16.949016571044922,
+      "learning_rate": 1.614035087719298e-05,
+      "epoch": 0.5235602094240838,
+      "step": 100
+    },
+    {
+      "loss": 0.5692474365234375,
+      "grad_norm": 12.403203964233398,
+      "learning_rate": 1.263157894736842e-05,
+      "epoch": 0.6282722513089005,
+      "step": 120
+    },
+    {
+      "loss": 0.5904177665710449,
+      "grad_norm": 22.377614974975586,
+      "learning_rate": 9.12280701754386e-06,
+      "epoch": 0.7329842931937173,
+      "step": 140
+    },
+    {
+      "loss": 0.5929219245910644,
+      "grad_norm": 11.744131088256836,
+      "learning_rate": 5.614035087719298e-06,
+      "epoch": 0.837696335078534,
+      "step": 160
+    },
+    {
+      "loss": 0.49156756401062013,
+      "grad_norm": 16.272537231445312,
+      "learning_rate": 2.1052631578947366e-06,
+      "epoch": 0.9424083769633508,
+      "step": 180
+    }
+  ]
+}

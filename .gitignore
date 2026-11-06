@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+models/
+index/
+*.zip
+.ipynb_checkpoints/
+eval_run.log

@@ -1,0 +1,98 @@
+{
+  "settings": {
+    "date": "2026-11-06",
+    "machine": "12th Gen Intel(R) Core(TM) i5-1235U, 10 threads",
+    "torch": "2.15.0+cpu",
+    "embed_model": "sentence-transformers/all-MiniLM-L6-v2",
+    "num_passages": 2067,
+    "ks": [
+      1,
+      3,
+      5,
+      10,
+      20
+    ],
+    "top_k": 3,
+    "reader_samples": 1000,
+    "open_samples": 500,
+    "seed": 42
+  },
+  "retrieval": {
+    "recall@1": 62.28949858088931,
+    "recall@3": 80.53926206244087,
+    "recall@5": 86.480605487228,
+    "recall@10": 91.6650898770104,
+    "recall@20": 95.31693472090824,
+    "mrr@20": 72.76425475077085,
+    "n": 10570,
+    "ms_per_query": 1.9923572185451064
+  },
+  "readers": [
+    {
+      "reader": "DistilBERT (pretrained, not fine-tuned by us)",
+      "key": "base",
+      "type": "extractive",
+      "setting": "oracle passage",
+      "model": "distilbert-base-cased-distilled-squad",
+      "ms_per_question": 172.93956699990667,
+      "exact_match": 79.1,
+      "f1": 86.78708259001435,
+      "n": 1000
+    },
+    {
+      "reader": "DistilBERT (pretrained, not fine-tuned by us)",
+      "key": "base",
+      "type": "extractive",
+      "setting": "retrieved top-3",
+      "model": "distilbert-base-cased-distilled-squad",
+      "ms_per_question": 557.5311475999188,
+      "exact_match": 57.0,
+      "f1": 65.13695160129204,
+      "n": 500
+    },
+    {
+      "reader": "DistilBERT (fine-tuned by us)",
+      "key": "finetuned",
+      "type": "extractive",
+      "setting": "oracle passage",
+      "model": "C:\\Users\\Karthik\\AppData\\Local\\Claude-Data\\anthropicpbc.claude_fnn82j28hfe8t\\scratch-workspaces\\477cfdcc-dc17-42a0-8275-6b7ecd9b6dbf\\963c0869-e0f0-4854-ad94-8fb8476dbcf6\\scratch-2026-11-06-705347\\qa-llm\\models\\distilbert-squad-finetuned",
+      "ms_per_question": 190.46211889991537,
+      "exact_match": 77.7,
+      "f1": 86.34352347349373,
+      "n": 1000
+    },
+    {
+      "reader": "DistilBERT (fine-tuned by us)",
+      "key": "finetuned",
+      "type": "extractive",
+      "setting": "retrieved top-3",
+      "model": "C:\\Users\\Karthik\\AppData\\Local\\Claude-Data\\anthropicpbc.claude_fnn82j28hfe8t\\scratch-workspaces\\477cfdcc-dc17-42a0-8275-6b7ecd9b6dbf\\963c0869-e0f0-4854-ad94-8fb8476dbcf6\\scratch-2026-11-06-705347\\qa-llm\\models\\distilbert-squad-finetuned",
+      "ms_per_question": 573.2559685998131,
+      "exact_match": 56.6,
+      "f1": 65.58332267388616,
+      "n": 500
+    },
+    {
+      "reader": "Flan-T5 (flan-t5-base, zero-shot)",
+      "key": "flan",
+      "type": "generative",
+      "setting": "oracle passage",
+      "model": "google/flan-t5-base",
+      "ms_per_question": 723.0947394999675,
+      "exact_match": 84.4,
+      "f1": 91.33943728870757,
+      "n": 1000
+    },
+    {
+      "reader": "Flan-T5 (flan-t5-base, zero-shot)",
+      "key": "flan",
+      "type": "generative",
+      "setting": "retrieved top-3",
+      "model": "google/flan-t5-base",
+      "ms_per_question": 1328.2754124000203,
+      "exact_match": 62.0,
+      "f1": 68.64752106734743,
+      "n": 500
+    }
+  ]
+}
